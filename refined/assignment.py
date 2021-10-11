@@ -165,31 +165,7 @@ def lap_scipy(xy, nn, verbose=False, output_dir='.'):
         img[xx, yy] = ft
 
     return img.astype(object)
-#%%  InitCorr legacy code
-def InitCorr(Dist_mat, parent_pop, NN, BB=0, KK=0):
-    # parent_pop 47x47, elements str F***
-    # Dist_mat: original distance between feats, np.array?
-    FFN = Dist_mat.shape[0] # number of features
-    NN2 = NN*NN
-    FF = [f'F{i}' for i in range(NN2)]
-    FF_FFN = [f'F{i}' for i in range(FFN)]
-    PP_MM = np.reshape([[0.0 for y in range(NN2)] for x in range(NN2)],(NN2,NN2))
-    PP_mm = []
-    for i in range(NN):
-        for j in range(NN):
-            PP_mm.append([i,j])
-    pix_dist = distance.pdist(PP_mm)
-    PP_MM = distance.squareform(pix_dist, checks=False)
-    Dist_mat_Sq = distance.squareform(Dist_mat, checks=False)
-    parent_pop2 = parent_pop          ## Added by Omid
-    parent_pop2_vec = np.reshape(parent_pop2,(1,NN2)).tolist()[0]
-    Indd2_vec = [parent_pop2_vec.index(i) for i in FF_FFN]
-    PP_MM2_vec = PP_MM[np.ix_(Indd2_vec,Indd2_vec)]
-    CORRr1, P_VAL = pearsonr(Dist_mat_Sq,
-                             distance.squareform(PP_MM2_vec, checks=False))
-    #CORRr1 = Cor2_arr[1,0]
-    print("\nInitial: >>>> ",CORRr1)
-    return CORRr1
+
 #%%
 def test_show_np_array_reshaping():
     xv, yv = np.meshgrid(np.linspace(1, 3, 3), np.linspace(1, 3, 3))
