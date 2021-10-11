@@ -2,8 +2,26 @@
 
 
 """
+import os
+import numpy as np
+import pandas as pd
+import math
+import pickle
+import sklearn.manifold as mnf
+from sklearn.decomposition import PCA
+from imageio import imwrite as imsave
+from scipy.stats import pearsonr
+from scipy.spatial import distance
+from sklearn.preprocessing import scale
+from myToolbox import ToolBox
+from myToolbox.Stat import normalize_df
+from refined.ImageIsomap import ImageIsomap
+from refined.assignment import two_d_norm, two_d_eq
+from refined.assignment import InitCorr
+from refined.assignment import assign_features_to_pixels, lap_scipy
+from refined.args import RFDArgs, GenImgArgs, PipelineArgs
 
-
+#%%
 class Refined(object):
     def __init__(self, dim_reduction='MDS', distance_metric='correlation',
                  assignment='lap', verbose=True, **kwarg):
@@ -11,7 +29,7 @@ class Refined(object):
         self.dim_r = dim_reduction.lower()
         self.verbose = verbose
         self.hw = None
-        self.assign = assignm
+        self.assign = assignment
         self._fitted = False
         self.args = kwarg
 
@@ -29,10 +47,12 @@ class Refined(object):
         return pd.DataFrame(pos_mat, index=feature_names_list, columns=['x','y']).to_dict('index')
 
 
-    def fit(self, original_input):
+    def fit(self, original_input: pd.DataFrame, key_param=None):
         """
         Calculate the initial correlations (distances) of features,
         Assign the original positions mapping.
+        key_param is n_neighbors or perplexity for tSNE. 
+
         """
         assert isinstance(original_input, pd.DataFrame)
         feature_names_list = original_input.columns.tolist()
@@ -50,15 +70,16 @@ class Refined(object):
             mds = mnf.MDS(dissimilarity='precomputed')
             xy = mds.fit_transform(dist_mat)
         elif 'c-iso' in self.dim_r:
-
+            mds = ImageIsomap(n_neighbors=key_param, n_jobs=-1, cisomap=True)  # default 25
         elif 'isomap' in self.dim_r:
-            isomap = mnf.Isomap(n_neighbors=25, n_components=2, eigen_solver='dense', path_method= 'D', n_jobs=3)
+            isomap = mnf.Isomap(n_neighbors=key_param, n_components=2, 
+                    eigen_solver='dense', path_method= 'D', n_jobs=3)  # default 25
             xy = isomap.fit_transform(transposed_input)
         elif 'lle' in self.dim_r:
-            lle = mnf.LocallyLinearEmbedding(n_neighbors=15)
+            lle = mnf.LocallyLinearEmbedding(n_neighbors=key_param)  # default 15
             xy = lle.fit_transform(transposed_input)
         elif 'tsne' in self.dim_r:
-            tsne = mnf.TSNE()
+            tsne = mnf.TSNE(perplexity=key_param)  # default by default
             xy = tsne.fit_transform(transposed_input)
         elif 'pca' in self.dim_r:
             pca = PCA(n_components=2)
@@ -70,12 +91,14 @@ class Refined(object):
             xy = dfmap.fit_transform(transposed_input)
         if self.verbose:
             print(">>>> Dim-reduction done")
+
         #%% Assign pixels
         if self.assign == 'refined':
             eq_xy = two_d_eq(xy)
-            mapping = assign_features_to_pixels(eq_xy,nn,verbose=self.verbose)
+            mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose)
         elif self.assign == 'lap':
-            mapping = （LAP function）
+            mapping = lap_scipy(xy, nn, verbose=self.verbose)
+
         try:
             InitCorr(dist_mat, mapping, nn)
         except ValueError:
@@ -123,7 +146,7 @@ class Refined(object):
         self.feature_names_list = tb.index.tolist()
         xy = tb.iloc[:, :2].values
         eq_xy = two_d_eq(xy)
-        mapping = Assign_features_to_pixels(eq_xy, nn, verbose=self.verbose)
+        mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose)
         self.mapping_obj_array = mapping
         self.mapping_dict = self._transform_mapping_dict(self.mapping_obj_array.copy(),
                                                          self.feature_names_list)
@@ -242,9 +265,15 @@ class Refined(object):
     def reverse_mapping(self, array):
         pass
 
-def mapping(args: ):
+def gen_mapping(args: RFDArgs):
+
     pass
 
+def gen_images(args: GenImgArgs):
+    pass
+
+def pipeline(args: PipelineArgs):
+    pass
 
 if __name__ == "__main__":
     pass
