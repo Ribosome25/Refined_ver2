@@ -7,7 +7,7 @@ from typing import List
 from tap import Tap  # pip install typed-argument-parser
 
 
-class DimReduArgs(Tap):
+class RFDArgs(Tap):
     df_path: List  # The paths to the input data df files (or precomputed distances). Files will be concatenated. Also make precomputed ones a df please.
     dim_reduction: str='MDS'  # Dimensional reduction method
     distance_metric: str='correlation'  # distance metric, or precomputed.
@@ -26,5 +26,5 @@ class GenImgArgs(Tap):
     output_dir: str  # where to store the images
 
 
-class PipelineArgs(DimReduArgs, GenImgArgs):
+class PipelineArgs(RFDArgs, GenImgArgs):
     pass
