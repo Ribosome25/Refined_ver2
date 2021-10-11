@@ -1,0 +1,10 @@
+Gauss_clusters/*
+Part1/*
+Part2/*
+.pylint.d/*
+.vscode/*
+data/*
+proposal/*
+ReadPaper/*
+__pycache__/*
+WriteUps/*
