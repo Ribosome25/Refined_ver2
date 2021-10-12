@@ -13,6 +13,7 @@ data = pd.read_excel("Normalized_counts_Auxin RNASeq.xlsx", sheet_name=1, index_
 
 sample = data.loc[data.index.str.startswith("LOC_Os01g")].T
 
-sample.iloc[:5].to_parquet("splited_data/s1_C.parquet", engine='fastparquet')
-sample.iloc[:5, :300].to_parquet("splited_data/s1_C_test.parquet", engine='fastparquet')
+sample.to_parquet("splited_data/s1_all.parquet", engine='fastparquet', compression='gzip')
+sample.iloc[:5].to_parquet("splited_data/s1_C.parquet", engine='fastparquet', compression='gzip')
+sample.iloc[:5, :500].to_parquet("splited_data/s1_C_test.parquet", engine='fastparquet', compression='gzip')
 
