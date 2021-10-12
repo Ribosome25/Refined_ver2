@@ -129,7 +129,7 @@ def lap_scipy(xy, nn, verbose=False, output_dir='.'):
     xy is the 2D data.
     Grid size nn x nn.
     """
-    assert(len(xy) < nn * nn), "Num of data points must less than grid points."
+    assert(len(xy) <= nn * nn), "Num of data points must less than (or equal to) grid points."
     Nn = xy.shape[0]
     # normalize to [0, 1]
     xy -= xy.min(axis=0)
