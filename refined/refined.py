@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import math
 import pickle
+import json
 import sklearn.manifold as mnf
 from sklearn.decomposition import PCA
 from imageio import imwrite as imsave
@@ -19,6 +20,7 @@ from refined.ImageIsomap import ImageIsomap
 from refined.assignment import two_d_norm, two_d_eq
 from refined.assignment import assign_features_to_pixels, lap_scipy
 from refined.args import RFDArgs, GenImgArgs, PipelineArgs
+from refined.io import check_path_exists, float_to_int, read_df_list
 
 #%%
 class Refined(object):
@@ -28,7 +30,7 @@ class Refined(object):
         self.dim_r = dim_reduction.lower()
         self.verbose = verbose
         self.hw = None
-        self.assign = assignment
+        self.assign = assignment.lower()
         self._fitted = False
         self.args = kwarg
 
@@ -46,7 +48,7 @@ class Refined(object):
         return pd.DataFrame(pos_mat, index=feature_names_list, columns=['x','y']).to_dict('index')
 
 
-    def fit(self, original_input: pd.DataFrame, key_param=None):
+    def fit(self, original_input: pd.DataFrame, key_param=None, output_dir='.'):
         """
         Calculate the initial correlations (distances) of features,
         Assign the original positions mapping.
@@ -57,14 +59,20 @@ class Refined(object):
         feature_names_list = original_input.columns.tolist()
         nn = math.ceil(np.sqrt(len(feature_names_list))) # image dimension
         Nn = original_input.shape[1] # Feature amount total
+
+        #%% calculate distances
         if 'corr' in self.dist_m:
-            dist_mat = 1 - (original_input.corr()) # dist = 1-correlation
+            c = np.corrcoef(original_input.T)
+            c = np.nan_to_num(c, 0)
+            dist_mat = pd.DataFrame(1 - c, index=original_input.columns, columns=original_input.columns)
         else:
-            raise ValueError("Initial distance metric. Now Corrs only.")
+            raise ValueError("Tobedone. Initial distance metric. Now Corrs only.")
         original_input = normalize_df(original_input)
         transposed_input = original_input.T # dim-reduc, the fts as instances, data T as DF
 
         #%% Dim reduction:
+        if self.verbose:
+            print("Dimensional reduction...")
         if 'mds' in self.dim_r:
             mds = mnf.MDS(dissimilarity='precomputed')
             xy = mds.fit_transform(dist_mat)
@@ -94,9 +102,9 @@ class Refined(object):
         #%% Assign pixels
         if self.assign == 'refined':
             eq_xy = two_d_eq(xy)
-            mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose)
+            mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose, output_dir=output_dir)
         elif self.assign == 'lap':
-            mapping = lap_scipy(xy, nn, verbose=self.verbose)
+            mapping = lap_scipy(xy, nn, verbose=self.verbose, output_dir=output_dir)
 
         try:
             InitCorr(dist_mat, mapping, nn)
@@ -153,7 +161,7 @@ class Refined(object):
         self.hw = nn
         return self
 
-    def generate_image(self, data_df, output_folder='Images', img_format='npy',
+    def generate_image(self, data_df, output_folder='.', img_format='npy',
                        dtype=int, normalize_feature=True, zscore=False, zscore_cutoff=5,
                        random_map=False, white_noise=False):
         assert self._fitted
@@ -192,12 +200,9 @@ class Refined(object):
         gene_expression = ToolBox.normalize_int_between(gene_expression, 0, 255)
 
         # Make folder
-        try:
-            os.mkdir('./'+output_folder)
-        except FileExistsError:
-            print("Folder already exists.")
-        finally:
-            os.chdir('./'+output_folder)
+        img_dir = os.path.join(output_folder, "RFD_Images/")
+        check_path_exists(output_folder)
+        check_path_exists(img_dir)
 
         # Save images
         n_img = len(gene_expression)
@@ -217,16 +222,20 @@ class Refined(object):
                 Img = np.full(self.mapping_obj_array.shape, np.nan).astype(np.uint8)
 
             cell_line_name = each_cell_line.name
-            # Exceptions:
+
+            # An Exceptions:
             if cell_line_name == 'PE/CAPJ15':
                 cell_line_name = 'PE'
+            
+            if "/" in cell_line_name:
+                cell_line_name = cell_line_name.replace("/", "-")  # correct way but
             # save
             # for each_feature in each_cell_line.index:
             for each_feature in self.feature_names_list:
                 xx = mapping_dict[each_feature]['x']
                 yy = mapping_dict[each_feature]['y']
                 val = each_cell_line[each_feature]
-                Img[xx,yy] = val # note: here is defined as this, x is the rows, y is the cols.
+                Img[xx, yy] = val # note: here is defined as this, x is the rows, y is the cols.
 
             # OR use mean instead of 0?
             np.nan_to_num(Img, copy=False, nan=np.nanmean(Img))
@@ -237,9 +246,9 @@ class Refined(object):
                 cell_line_name = 'VNLG_124'
 
             if 'np' in img_format:# and dtype is float: （why have this dtype check?
-                np.save('MDS_'+ str(cell_line_name), Img)
+                np.save(os.path.join(img_dir, 'RFD_'+ str(cell_line_name)), Img)
             else:
-                imsave('MDS_'+cell_line_name+'.'+img_format, Img)
+                imsave(os.path.join(img_dir,'RFD_'+cell_line_name+'.'+img_format), Img)
 
             debug_i += 1
         print("\n>>> Image generated.")
@@ -264,12 +273,46 @@ class Refined(object):
     def reverse_mapping(self, array):
         pass
 
+    def load_from_map_dict(self, fname):
+        pass
+
+#%%
 def gen_mapping(args: RFDArgs):
+    odir = args.output_dir
+    check_path_exists(odir)
 
-    pass
+    rfd = Refined(
+        dim_reduction=args.dim_reduction,
+        distance_metric=args.distance_metric,
+        assignment=args.assignment,
+        verbose=args.verbose
+        )
+    
+    data = read_df_list(args.df_path)
+    key_param = float_to_int(args.key_param)
+    rfd.fit(data, key_param=key_param, output_dir=odir)
+    
+    with open(os.path.join(odir, "REFINED_obj.pickle"), 'wb') as f:
+        pickle.dump(rfd, f)
+    with open(os.path.join(odir, "REFINED_mapping.json"), 'w') as f:
+        json.dump(rfd.mapping_dict, f)
+    return rfd
 
+from pydoc import locate
 def gen_images(args: GenImgArgs):
-    pass
+    with open(args.path, 'rb') as f:
+        rfd = pickle.load(f)
+    data = read_df_list(args.df_path)
+    dtype = locate(args.dtype)
+    rfd.generate_image(
+        data, 
+        output_folder=args.output_dir,
+        img_format=args.img_format,
+        dtype=dtype,
+        normalize_feature=args.normalize,
+        zscore=args.zscore,
+        zscore_cutoff=args.zscore_cutoff,
+        random_map=False, white_noise=False)
 
 def pipeline(args: PipelineArgs):
     pass
@@ -300,5 +343,7 @@ def InitCorr(Dist_mat, parent_pop, NN, BB=0, KK=0):
     #CORRr1 = Cor2_arr[1,0]
     print("\nInitial: >>>> ",CORRr1)
     return CORRr1
+
+
 if __name__ == "__main__":
     pass

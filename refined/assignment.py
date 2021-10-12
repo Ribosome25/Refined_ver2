@@ -107,8 +107,8 @@ def assign_features_to_pixels(xy, nn, verbose = False, output_dir='.'):
             plt.arrow(start[0], start[1], end[0] - start[0], end[1] - start[1],
                     head_length=0.01, head_width=0.01)
         plt.title("REFINED assignment displacement")
-        plt.show()
         plt.savefig(os.path.join(output_dir, "assignment_displacement.png"))
+        # plt.show()
 
 
     img = np.full((nn,nn),'NaN').astype(object)
@@ -153,11 +153,12 @@ def lap_scipy(xy, nn, verbose=False, output_dir='.'):
             plt.arrow(start[0], start[1], end[0] - start[0], end[1] - start[1],
                     head_length=0.01, head_width=0.01)
         plt.title("LAP assignment displacement")
-        plt.show()
         plt.savefig(os.path.join(output_dir, "assignment_displacement.png"))
+        # plt.show()
 
 
     img = np.full((nn,nn),'NaN').astype(object)
+    img = np.full((nn,nn), -1).astype(object)
     for col, row in zip(col_assigns, row_assigns):
         xx = grid_ij[row][0]
         yy = grid_ij[row][1]

@@ -8,3 +8,7 @@ proposal/*
 ReadPaper/*
 __pycache__/*
 WriteUps/*
+# for_proposal/*
+desktop.ini
+for_proposal/*
+refined/__pycache__/*
