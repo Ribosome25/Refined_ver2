@@ -4,15 +4,17 @@ Created on Tue Sep  8 16:15:52 2020
 
 @author: Ruibo
 
-write video or save images. 
+write video or save images.
 
-when writing video, the last frame is often skipped. Can be solved by adding a dummy frame in the end. 
+when writing video, the last frame is often skipped. Can be solved by adding a dummy frame in the end.
 
 """
 import numpy as np
 import pandas as pd
 import cv2
 import os
+import PIL.Image as Image
+from PIL import ImageDraw, ImageFont
 #%%
 def _get_cell_lines_types():
     cell_lines_details = pd.read_excel(
@@ -85,9 +87,13 @@ def write_video(video_filename, file_list, sequence,
                         t_scale/2, (0,0,0), t_scale, cv2.LINE_AA)
 
         out.write(im_color)
-    out.write(np.zeros(hw*resz, hw*resz))  # 避免最后一闪而过。还没有测试过。
+
+    imgs = np.zeros((hw*resz, hw*resz), np.uint8)
+    im_end = cv2.applyColorMap(imgs, cm)
+    out.write(im_end)  # 避免最后一闪而过。还没有测试过。
     # close out the video writer
     out.release()
+
 
 def enlarge_images(file_list, output_dir=None, resz=10, text_groups=None, cm=cv2.COLORMAP_COOL, gamma=1):
     """
@@ -127,6 +133,43 @@ def enlarge_images(file_list, output_dir=None, resz=10, text_groups=None, cm=cv2
         else:
             os.path.join(output_dir, os.path.split(each_f)[-1]+".png")
         cv2.imwrite(out_fname, im_color)
+
+
+
+def concat_images_2d(save_path, image_list, axis=1, n_rows=5, n_cols=5, gap=5):
+    """
+    图片拼接。
+    Assume every pic has the same size.
+    https://blog.csdn.net/weixin_44441009/article/details/113925581
+    axis =1: col first, then rows. axis=0: row first, then cols.
+    """
+
+    if len(image_list) != n_rows * n_cols:
+        raise ValueError("合成图片的参数和要求的数量不能匹配！")
+    img_size = Image.open(image_list[0]).width  # assume square. 方形图。
+    to_image = Image.new('RGB', (n_cols * img_size+gap*(n_cols-1), n_rows * img_size+gap*(n_rows-1)),'white' )  # 创建一个新图
+
+    # 循环遍历，把每张图片按顺序粘贴到对应位置上
+    posi = []
+    if axis==1:
+        for y in range(1, n_rows + 1):
+            for x in range(1, n_cols + 1):
+                posi.append((x, y))
+    else:
+        for y in range(1, n_rows + 1):
+            for x in range(1, n_cols + 1):
+                posi.append((y, x))
+
+    for ii in range(len(image_list)):
+        x, y = posi[ii]
+        from_image = Image.open(image_list[ii]).resize(
+            (img_size, img_size), Image.ANTIALIAS)
+        to_image.paste(from_image, ((x - 1) * img_size+gap* (x - 1), (y - 1) * img_size+gap* (y - 1)))
+
+    draw = ImageDraw.Draw(to_image)
+
+    return to_image.save(save_path)  # 保存新图
+
 
 def write_img_list(video_filename, image_list, hw=None, fps=5, resz=20,
                 binarize_thrs=None,

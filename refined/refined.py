@@ -52,7 +52,7 @@ class Refined(object):
         """
         Calculate the initial correlations (distances) of features,
         Assign the original positions mapping.
-        key_param is n_neighbors or perplexity for tSNE. 
+        key_param is n_neighbors or perplexity for tSNE.
 
         """
         assert isinstance(original_input, pd.DataFrame)
@@ -79,7 +79,7 @@ class Refined(object):
         elif 'c-iso' in self.dim_r:
             mds = ImageIsomap(n_neighbors=key_param, n_jobs=-1, cisomap=True)  # default 25
         elif 'isomap' in self.dim_r:
-            isomap = mnf.Isomap(n_neighbors=key_param, n_components=2, 
+            isomap = mnf.Isomap(n_neighbors=key_param, n_components=2,
                     eigen_solver='dense', path_method= 'D', n_jobs=3)  # default 25
             xy = isomap.fit_transform(transposed_input)
         elif 'lle' in self.dim_r:
@@ -226,7 +226,7 @@ class Refined(object):
             # An Exceptions:
             if cell_line_name == 'PE/CAPJ15':
                 cell_line_name = 'PE'
-            
+
             if "/" in cell_line_name:
                 cell_line_name = cell_line_name.replace("/", "-")  # correct way but
             # save
@@ -254,7 +254,7 @@ class Refined(object):
         print("\n>>> Image generated.")
         return None
 
-    def plot_mapping(self):
+    def plot_mapping(self, output_dir=None):
         import matplotlib.pyplot as plt
         assert self._fitted
         hw = self.mapping_obj_array.shape[0]
@@ -268,6 +268,8 @@ class Refined(object):
         plt.grid()
         plt.xlim(0, hw)
         plt.ylim(0, hw)
+        if output_dir is not None:
+            plt.savefig(os.path.join(output_dir, "REFINED_mapping.png"))
         return None
 
     def reverse_mapping(self, array):
@@ -287,11 +289,11 @@ def gen_mapping(args: RFDArgs):
         assignment=args.assignment,
         verbose=args.verbose
         )
-    
+
     data = read_df_list(args.df_path)
     key_param = float_to_int(args.key_param)
     rfd.fit(data, key_param=key_param, output_dir=odir)
-    
+
     with open(os.path.join(odir, "REFINED_obj.pickle"), 'wb') as f:
         pickle.dump(rfd, f)
     with open(os.path.join(odir, "REFINED_mapping.json"), 'w') as f:
@@ -305,7 +307,7 @@ def gen_images(args: GenImgArgs):
     data = read_df_list(args.df_path)
     dtype = locate(args.dtype)
     rfd.generate_image(
-        data, 
+        data,
         output_folder=args.output_dir,
         img_format=args.img_format,
         dtype=dtype,
