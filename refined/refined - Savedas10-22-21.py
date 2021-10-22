@@ -3,7 +3,6 @@
 
 """
 import os
-from platform import dist
 import numpy as np
 import pandas as pd
 import math
@@ -14,7 +13,6 @@ from sklearn.decomposition import PCA
 from imageio import imwrite as imsave
 from scipy.stats import pearsonr
 from scipy.spatial import distance
-from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.preprocessing import scale
 from myToolbox import ToolBox
 from myToolbox.Stat import normalize_df
@@ -54,7 +52,7 @@ class Refined(object):
         """
         Calculate the initial correlations (distances) of features,
         Assign the original positions mapping.
-        key_param is n_neighbors for isomap, etc.. or perplexity for tSNE.
+        key_param is n_neighbors or perplexity for tSNE.
 
         """
         assert isinstance(original_input, pd.DataFrame)
@@ -67,10 +65,6 @@ class Refined(object):
             c = np.corrcoef(original_input.T)
             c = np.nan_to_num(c, 0)
             dist_mat = pd.DataFrame(1 - c, index=original_input.columns, columns=original_input.columns)
-        elif 'euclid' in self.dist_m:
-            dist_mat = pd.DataFrame(
-                euclidean_distances(original_input.T), index=original_input.columns, columns=original_input.columns
-            )
         else:
             raise ValueError("Tobedone. Initial distance metric. Now Corrs only.")
         original_input = normalize_df(original_input)
@@ -83,25 +77,22 @@ class Refined(object):
             mds = mnf.MDS(dissimilarity='precomputed')
             xy = mds.fit_transform(dist_mat)
         elif 'c-iso' in self.dim_r:
-            ciso = ImageIsomap(metric='precomputed', n_neighbors=key_param, n_jobs=-1, cisomap=True)  # default 25
-            xy = ciso.fit_transform(dist_mat)
+            mds = ImageIsomap(n_neighbors=key_param, n_jobs=-1, cisomap=True)  # default 25
         elif 'isomap' in self.dim_r:
-            isomap = mnf.Isomap(metric='precomputed', n_neighbors=key_param, n_components=2,
+            isomap = mnf.Isomap(n_neighbors=key_param, n_components=2,
                     eigen_solver='dense', path_method= 'D', n_jobs=3)  # default 25
-            xy = isomap.fit_transform(dist_mat)
+            xy = isomap.fit_transform(transposed_input)
         elif 'lle' in self.dim_r:
             lle = mnf.LocallyLinearEmbedding(n_neighbors=key_param)  # default 15
-            print("LLE doesn't support precomputed dist so far. ")
             xy = lle.fit_transform(transposed_input)
         elif 'tsne' in self.dim_r:
-            tsne = mnf.TSNE(metric='precomputed', perplexity=key_param)  # default by default
-            xy = tsne.fit_transform(dist_mat)
+            tsne = mnf.TSNE(perplexity=key_param)  # default by default
+            xy = tsne.fit_transform(transposed_input)
         elif 'pca' in self.dim_r:
             pca = PCA(n_components=2)
             xy = pca.fit_transform(transposed_input)
         elif 'dm' or 'diffusion' in self.dim_r:
             import pydiffmap as dm
-            print("By default, using correlation")
             dfmap = dm.diffusion_map.DiffusionMap.from_sklearn(n_evecs=2,metric = 'correlation',
                                                             alpha = 0.5, epsilon = 1, k = 32)
             xy = dfmap.fit_transform(transposed_input)
