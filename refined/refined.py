@@ -27,7 +27,14 @@ from refined.io import check_path_exists, float_to_int, read_df_list
 #%%
 class Refined(object):
     def __init__(self, dim_reduction='MDS', distance_metric='correlation',
-                 assignment='lap', verbose=True, **kwarg):
+                 assignment='lap', verbose=True, seed=None, **kwarg):
+        """
+        dim_reduction: 'mds', 'c-iso', ... etc.
+        distance_metric: correlation or euclidean;
+        assignment: "refined" for the old one (nearest first), 'lap' for scipy linear assignment problem;
+        seed: MDS, LLE, tSNE have random states. 
+
+        """
         self.dist_m = distance_metric.lower()
         self.dim_r = dim_reduction.lower()
         self.verbose = verbose
@@ -35,6 +42,7 @@ class Refined(object):
         self.assign = assignment.lower()
         self._fitted = False
         self.args = kwarg
+        self.seed = seed
 
     @staticmethod
     def _transform_mapping_dict(init_map, feature_names_list):
@@ -80,7 +88,7 @@ class Refined(object):
         if self.verbose:
             print("Dimensional reduction...")
         if 'mds' in self.dim_r:
-            mds = mnf.MDS(dissimilarity='precomputed')
+            mds = mnf.MDS(dissimilarity='precomputed', random_state=self.seed)
             xy = mds.fit_transform(dist_mat)
         elif 'c-iso' in self.dim_r:
             ciso = ImageIsomap(metric='precomputed', n_neighbors=key_param, n_jobs=-1, cisomap=True)  # default 25
@@ -90,11 +98,11 @@ class Refined(object):
                     eigen_solver='dense', path_method= 'D', n_jobs=3)  # default 25
             xy = isomap.fit_transform(dist_mat)
         elif 'lle' in self.dim_r:
-            lle = mnf.LocallyLinearEmbedding(n_neighbors=key_param)  # default 15
+            lle = mnf.LocallyLinearEmbedding(n_neighbors=key_param, random_state=self.seed)  # default 15
             print("LLE doesn't support precomputed dist so far. ")
             xy = lle.fit_transform(transposed_input)
         elif 'tsne' in self.dim_r:
-            tsne = mnf.TSNE(metric='precomputed', perplexity=key_param)  # default by default
+            tsne = mnf.TSNE(metric='precomputed', perplexity=key_param, random_state=self.seed)  # default by default
             xy = tsne.fit_transform(dist_mat)
         elif 'pca' in self.dim_r:
             pca = PCA(n_components=2)
