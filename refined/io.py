@@ -37,7 +37,7 @@ def check_path_exists(output_path: str):
         if ext == '':
             # This is a dir or a file without ext.
             if not os.path.exists(path) or os.path.isfile(path):
-                os.mkdir(path)
+                os.makedirs(path)
         else:
             # This is a file name.
             if os.path.exists(output_path):
