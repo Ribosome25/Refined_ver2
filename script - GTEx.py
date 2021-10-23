@@ -41,28 +41,31 @@ def gene_filter_unsupervised(df, n=2500):
 
 
 #%% take log and select the first sample
-# data = pd.read_table("G:\Datasets\GTEx\GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct", index_col=0).T
-data = pd.read_csv("G:\Datasets\GTEx\GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct/preview.csv", index_col=1, header=2).T
-print(data.columns.duplecated().sum())
-
-sample = gene_filter_unsupervised(data, None)
-
+data = pd.read_table("G:/Datasets/GTEx/gene_tpm/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct", header=2, index_col=0).T
+print("Data loaded")
+# data = pd.read_csv("G:/Datasets/GTEx/gene_tpm/preview.csv", index_col=1, header=2).T
+data = data.iloc[1:]
+print(data.columns.duplicated().sum())
+data.to_parquet("G:/Datasets/GTEx/gene_tpm/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.parquet")
+sample = gene_filter_unsupervised(data, 2500)
+del data
 #%%
 import pickle
 from refined.io import check_path_exists
-check_path_exists("G:\Datasets\GTEx\")
-rfd = Refined(verbose=False)
-rfd.fit(sample, output_dir="G:\Datasets\GTEx\")  # fit refined
-with open("G:\Datasets\GTEx\RFD_MDS_2500.pickle", 'wb') as f:  # save object
+rfd_dir = "G:/Datasets/GTEx/RFD/"
+check_path_exists(rfd_dir)
+rfd = Refined(verbose=True)
+rfd.fit(sample, output_dir=rfd_dir)  # fit refined
+with open(rfd_dir + "RFD_MDS_2500.pickle", 'wb') as f:  # save object
     pickle.dump(rfd, f)
 rfd.plot_mapping()  # genes mapping
 sample = normalize_df(sample)  # normalize it overall, otw become outwashing bright.
+# raise
 #%%
-for fold in range(0, 5):  # 保存图片。默认npy
-    check_path_exists('for_proposal/auxin_6/{}/'.format(fold))
-    final = sample.iloc[5*fold: 5+5*fold]
-    rfd.generate_image(final, output_folder='for_proposal/auxin_6/{}/'.format(fold), normalize_feature=False)
-    f_list = os.listdir('for_proposal/auxin_6/{}/RFD_Images'.format(fold))
-    f_list = [os.path.join('for_proposal/auxin_6/{}/RFD_Images'.format(fold), x) for x in f_list]
-    enlarge_images(f_list, text_groups=final.index.tolist(), cm=cmapy.cmap('Blues_r'))  # 转换成png
+rfd.generate_image(final, output_folder=rfd_dir, normalize_feature=False)
+f_list = os.listdir(rfd_dir + 'RFD_Images'.format(fold))
+f_list = [os.path.join(rfd_dir + 'RFD_Images', x) for x in f_list]
+enlarge_images(f_list, text_groups=final.index.tolist(), cm=cmapy.cmap('Blues_r'))  # 转换成png
+#%%
+rfd.generate_image(final, output_folder=rfd_dir, normalize_feature=False, img_format='bmp')
 
