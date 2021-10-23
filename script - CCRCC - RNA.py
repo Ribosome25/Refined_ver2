@@ -18,6 +18,9 @@ from refined.io import check_path_exists
 from refined.refined import Refined
 from refined.write_videos import enlarge_images, concat_images_2d
 import cmapy
+
+import pickle
+from refined.io import check_path_exists
 #%%
 def gene_filter_unsupervised(df, n=2500):
     # the first implementation: largest var filter and abs corr to temporal sequences
@@ -39,25 +42,29 @@ def gene_filter_unsupervised(df, n=2500):
     # final = control_group.iloc[:, corr_idx]
     return final
 
-lookup_table = pd.read_csv("G:\Datasets\CCRCC\CPTAC_CCRCC_Transcriptome_rpkm/RNA_clinical.csv", index_col=2)
-lookup_table.iloc[:, 2] = lookup_table.iloc[:, 0] + lookup_table.iloc[:, 1]
-raise
+lookup_table = pd.read_csv("G:/Datasets/CCRCC/CPTAC_CCRCC_Transcriptome_rpkm/RNA_clinical.csv", index_col=2, header=None)
+lookup_table[1] = lookup_table[1].replace("Primary Tumor", 'T').replace("Solid Tissue Normal", "N")
+lookup_table["c"] = lookup_table[0] + "-" + lookup_table[1]
 #%% take log and select the first sample
-data = pd.read_table("G:\Datasets\CCRCC\CPTAC_CCRCC_Transcriptome_rpkm.tsv", index_col=0, header=0).T
-print(data.columns.duplecated().sum())
-new_idx = lookup_table.loc[data.index]
-raise
-sample = gene_filter_unsupervised(data, None)
+data = pd.read_table("G:/Datasets/CCRCC/CPTAC_CCRCC_Transcriptome_rpkm/RNA_rpkm_tumor_normal.tsv", index_col=0, header=0).T
+data = data.loc[:, ~data.columns.duplicated()]
+print(data.columns.duplicated().sum())
+new_idx = lookup_table.reindex(data.index)['c']
+data.index = new_idx
+sample = gene_filter_unsupervised(data, 2500)
 
 #%%
-import pickle
-from refined.io import check_path_exists
-check_path_exists("G:\Datasets\CCRCC\gene_exp")
-rfd = Refined(verbose=True)
-rfd.fit(sample, output_dir="G:\Datasets\CCRCC\gene_exp")  # fit refined
-with open("G:\Datasets\CCRCC\gene_exp\RFD_MDS_2500.pickle", 'wb') as f:  # save object
-    pickle.dump(rfd, f)
-rfd.plot_mapping()  # genes mapping
-sample = normalize_df(sample)  # normalize it overall, otw become outwashing bright.
+REP = 10
+for ii in range(REP):
+    rfd_dir = "G:/Datasets/CCRCC/gene_exp/{}/".format(ii)
+    check_path_exists(rfd_dir)
+    rfd = Refined(dim_reduction='MDS', distance_metric='correlation',
+                 assignment='lap', verbose=True, seed=ii)
+    rfd.fit(sample, output_dir=rfd_dir)  # fit refined
+    with open(rfd_dir + "RFD_MDS_2500.pickle", 'wb') as f:  # save object
+        pickle.dump(rfd, f)
+    rfd.plot_mapping()  # genes mapping
+    # sample = normalize_df(sample)  # normalize it overall, otw become outwashing bright.
+    rfd.generate_image(sample, output_folder=rfd_dir)
 #%%
 
