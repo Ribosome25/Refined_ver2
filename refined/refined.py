@@ -23,6 +23,7 @@ from refined.assignment import two_d_norm, two_d_eq
 from refined.assignment import assign_features_to_pixels, lap_scipy
 from refined.args import RFDArgs, GenImgArgs, PipelineArgs
 from refined.io import check_path_exists, float_to_int, read_df_list
+import textwrap
 
 #%%
 class Refined(object):
@@ -32,7 +33,7 @@ class Refined(object):
         dim_reduction: 'mds', 'c-iso', ... etc.
         distance_metric: correlation or euclidean;
         assignment: "refined" for the old one (nearest first), 'lap' for scipy linear assignment problem;
-        seed: MDS, LLE, tSNE have random states. 
+        seed: MDS, LLE, tSNE have random states.
 
         """
         self.dist_m = distance_metric.lower()
@@ -279,7 +280,8 @@ class Refined(object):
         for txt in self.feature_names_list:
             yy = mapp[txt]['y'] + 0.5
             xx = hw - mapp[txt]['x'] - 0.5
-            plt.text(yy, xx, txt,
+            w_txt = textwrap.fill(txt, 5)  # added.
+            plt.text(yy, xx, w_txt,
                     horizontalalignment='center', verticalalignment='center',
                     wrap=True)
         plt.grid()
