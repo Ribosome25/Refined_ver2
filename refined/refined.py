@@ -274,6 +274,7 @@ class Refined(object):
     def plot_mapping(self, output_dir=None):
         import matplotlib.pyplot as plt
         assert self._fitted
+        plt.figure(figsize=(16, 10))
         hw = self.mapping_obj_array.shape[0]
         mapp = self.mapping_dict
         for txt in self.feature_names_list:
@@ -289,6 +290,21 @@ class Refined(object):
             plt.savefig(os.path.join(output_dir, "REFINED_mapping.png"))
         return None
 
+    def save_mapping_to_csv(self, output_path=None):
+        hw = self.mapping_obj_array.shape[0]
+        result = pd.DataFrame(np.zeros((hw, hw)))
+        mapp = self.mapping_dict
+        for txt in self.feature_names_list:
+            yy = int(mapp[txt]['y'])
+            xx = int(mapp[txt]['x'])
+            result.iloc[xx, yy] = txt
+        if output_path is None:
+            result.to_csv("REFINED mapping.csv")
+        else:
+            result.to_csv(output_path)
+            
+        
+    
     def reverse_mapping(self, array):
         pass
 
