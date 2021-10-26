@@ -94,6 +94,7 @@ def main():
     rfd.plot_mapping()  # genes mapping
     sample = normalize_df(sample)  # normalize it overall, keep identical with the one before.
     rfd.generate_image(sample, output_folder=out_dir, normalize_feature=False)
+    rfd.save_mapping_to_csv(out_dir+'mapping.csv')
     #%% Enclarge the npy imgs
     f_list = os.listdir(out_dir + "RFD_Images/")
     f_list = [os.path.join(out_dir + "RFD_Images/", x) for x in f_list]
