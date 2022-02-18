@@ -21,7 +21,8 @@ def gen_mapping_from_data(args: RFDArgs):
         distance_metric=args.distance_metric,
         assignment=args.assignment,
         working_dir=args.output_dir,
-        verbose=args.verbose
+        verbose=args.verbose,
+        seed=args.seed
         )
 
     data = read_df_list(args.df_path)

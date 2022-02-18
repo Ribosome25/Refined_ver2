@@ -17,7 +17,7 @@ class RFDArgs(Tap):
     verbose: bool
     key_param: float=5  # the key_param for dimreduction. N of nearest neighbors for most methods, or perplexity for tSNE. 
     n_var_filter: int=None  # max variance feature selection. how many feature with the most variance will be kept. 
-
+    seed: int=None  # Random seed for dim reduction
 
 class GenImgArgs(Tap):
     rfd_path: str  # the path to the REFINED object, or json
@@ -42,6 +42,7 @@ class PipelineArgs(Tap):
     verbose: bool
     key_param: float=5  # the key_param for dimreduction. N of nearest neighbors for most methods, or perplexity for tSNE. 
     n_var_filter: int=None  # max variance feature selection. how many feature with the most variance will be kept. 
+    seed: int=None  # Random seed for REFINED mapping generation -> dim reduction
 
     img_format: str="npy"  # image format. npy means save as np arrays. 
     dtype: str='int'  # the dtype of images. if float, the img_format must be npy
