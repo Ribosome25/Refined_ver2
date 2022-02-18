@@ -3,7 +3,6 @@
 
 """
 import os
-from platform import dist
 import numpy as np
 import pandas as pd
 import math
@@ -21,14 +20,15 @@ from myToolbox.Stat import normalize_df
 from refined.ImageIsomap import ImageIsomap
 from refined.assignment import two_d_norm, two_d_eq
 from refined.assignment import assign_features_to_pixels, lap_scipy
-from refined.args import RFDArgs, GenImgArgs, PipelineArgs
-from refined.io import check_path_exists, float_to_int, read_df_list
+from myToolbox.Io import check_path_exists, load_int_dict_from_json
 import textwrap
+from os.path import join as pj
+import re
 
 #%%
 class Refined(object):
     def __init__(self, dim_reduction='MDS', distance_metric='correlation',
-                 assignment='lap', verbose=True, seed=None, **kwarg):
+                 assignment='lap', working_dir='.', verbose=True, seed=None, **kwarg):
         """
         dim_reduction: 'mds', 'c-iso', ... etc.
         distance_metric: correlation or euclidean;
@@ -38,9 +38,12 @@ class Refined(object):
         """
         self.dist_m = distance_metric.lower()
         self.dim_r = dim_reduction.lower()
-        self.verbose = verbose
         self.hw = None
         self.assign = assignment.lower()
+        self.wd = working_dir
+        check_path_exists(working_dir)
+
+        self.verbose = verbose
         self._fitted = False
         self.args = kwarg
         self.seed = seed
@@ -59,7 +62,7 @@ class Refined(object):
         return pd.DataFrame(pos_mat, index=feature_names_list, columns=['x','y']).to_dict('index')
 
 
-    def fit(self, original_input: pd.DataFrame, key_param=None, output_dir='.'):
+    def fit(self, original_input: pd.DataFrame, key_param=None):
         """
         Calculate the initial correlations (distances) of features,
         Assign the original positions mapping.
@@ -120,9 +123,9 @@ class Refined(object):
         #%% Assign pixels
         if self.assign == 'refined':
             eq_xy = two_d_eq(xy)
-            mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose, output_dir=output_dir)
+            mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose, output_dir=self.wd)
         elif self.assign == 'lap':
-            mapping = lap_scipy(xy, nn, verbose=self.verbose, output_dir=output_dir)
+            mapping = lap_scipy(xy, nn, verbose=self.verbose, output_dir=self.wd)
 
         try:
             InitCorr(dist_mat, mapping, nn)
@@ -133,27 +136,27 @@ class Refined(object):
         self.feature_names_list = feature_names_list
         self.dist_mat = dist_mat
         self.mapping_obj_array = mapping
-        # self._transform_mapping_dict()
         self.mapping_dict = self._transform_mapping_dict(self.mapping_obj_array.copy(), self.feature_names_list)
         self._fitted = True
         return self
 
-    def save_mapping_for_hill_climbing(self, f_name='to_hill_climbing'):
+
+    def save_mapping_for_hill_climbing(self, f_name='to_hill_climbing.pickle'):
         try:
-            with open('./{}.pickle'.format(f_name),'wb') as file:
+            with open(pj(self.wd, f_name),'wb') as file:
                 pickle.dump([self.feature_names_list,
                     self.dist_mat, self.mapping_obj_array], file)
-            print("File saved.")
+            print("File saved for hill climbing as {}.".format(pj(self.wd, f_name)))
         except IOError:
-            print("IO Error. Not saved.")
+            print("IO Error. File not saved for hill climbing.")
 
-    def load_from_hill_climbing(self, f_name='to_hill_climbing'):
-        f_name = f_name.strip('.pickle')
+
+    def load_from_hill_climbing(self, f_name='to_hill_climbing.pickle'):
         try:
-            with open('{}.pickle'.format(f_name), 'rb') as file:
+            with open(f_name, 'rb') as file:
                 feature_name_list, pos_mat, init_map = pickle.load(file)
             self._fitted = True
-        except :
+        except:
             print("Cannot read files from Hill climbing. ")
             return None
         self.feature_names_list = feature_name_list
@@ -161,7 +164,11 @@ class Refined(object):
         self.mapping_obj_array = init_map
         return self
 
+
     def load_from_string_coords(self, string_f):
+        """
+        Written for STRING protein interaction network format: feature_name, x (float), y(float)
+        """
         if string_f.endswith('.csv'):
             tb = pd.read_csv(string_f, index_col=0)
         else:
@@ -170,8 +177,14 @@ class Refined(object):
         nn = math.ceil(math.sqrt(Nn))
         self.feature_names_list = tb.index.tolist()
         xy = tb.iloc[:, :2].values
-        eq_xy = two_d_eq(xy)
-        mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose)
+
+        #%% Assign pixels
+        if self.assign == 'refined':
+            eq_xy = two_d_eq(xy)
+            mapping = assign_features_to_pixels(eq_xy, nn, verbose=self.verbose, output_dir=self.wd)
+        elif self.assign == 'lap':
+            mapping = lap_scipy(xy, nn, verbose=self.verbose, output_dir=self.wd)
+
         self.mapping_obj_array = mapping
         self.mapping_dict = self._transform_mapping_dict(self.mapping_obj_array.copy(),
                                                          self.feature_names_list)
@@ -179,7 +192,8 @@ class Refined(object):
         self.hw = nn
         return self
 
-    def generate_image(self, data_df, output_folder='.', img_format='npy',
+
+    def generate_image(self, data_df, output_folder='RFD_Images', img_format='npy',
                        dtype=int, normalize_feature=True, zscore=False, zscore_cutoff=5,
                        random_map=False, white_noise=False):
         assert self._fitted
@@ -218,8 +232,8 @@ class Refined(object):
         gene_expression = ToolBox.normalize_int_between(gene_expression, 0, 255)
 
         # Make folder
-        img_dir = os.path.join(output_folder, "RFD_Images/")
-        check_path_exists(output_folder)
+        img_dir = pj(self.wd, output_folder)
+        # check_path_exists(output_folder)
         check_path_exists(img_dir)
 
         # Save images
@@ -230,14 +244,14 @@ class Refined(object):
             if self.verbose:
                 print("\rGenerating images: {} / {}".format(debug_i, str(n_img)), end='')
             if ('np' in img_format) and (dtype == float):
-                Img = np.zeros(self.mapping_obj_array.shape)
+                Img = np.zeros((self.hw, self.hw))
                 # or start with 125?
-                Img = np.full(self.mapping_obj_array.shape, np.nan)
+                Img = np.full((self.hw, self.hw), np.nan)
             else:
                 # imwrite requires unit8
-                Img = np.zeros(self.mapping_obj_array.shape).astype(np.uint8)
+                Img = np.zeros((self.hw, self.hw)).astype(np.uint8)
                 # or 125?
-                Img = np.full(self.mapping_obj_array.shape, np.nan).astype(np.uint8)
+                Img = np.full((self.hw, self.hw), np.nan).astype(np.uint8)
 
             cell_line_name = each_cell_line.name
 
@@ -245,8 +259,8 @@ class Refined(object):
             if cell_line_name == 'PE/CAPJ15':
                 cell_line_name = 'PE'
 
-            if "/" in cell_line_name:
-                cell_line_name = cell_line_name.replace("/", "-")  # correct way but
+            cell_line_name = re.sub(r'[\\/*?:"<>|]', "", cell_line_name)  # invalid chars for file names
+
             # save
             # for each_feature in each_cell_line.index:
             for each_feature in self.feature_names_list:
@@ -264,13 +278,14 @@ class Refined(object):
                 cell_line_name = 'VNLG_124'
 
             if 'np' in img_format:# and dtype is float: （why have this dtype check?
-                np.save(os.path.join(img_dir, 'RFD_'+ str(cell_line_name)), Img)
+                np.save(pj(img_dir, 'RFD_'+ str(cell_line_name)), Img)
             else:
-                imsave(os.path.join(img_dir,'RFD_'+cell_line_name+'.'+img_format), Img)
+                imsave(pj(img_dir,'RFD_'+cell_line_name+'.'+img_format), Img)
 
             debug_i += 1
         print("\n>>> Image generated.")
         return None
+
 
     def plot_mapping(self, output_dir=None):
         import matplotlib.pyplot as plt
@@ -288,11 +303,14 @@ class Refined(object):
         plt.grid()
         plt.xlim(0, hw)
         plt.ylim(0, hw)
-        if output_dir is not None:
-            plt.savefig(os.path.join(output_dir, "REFINED_mapping.png"))
+        if output_dir is None:
+            output_dir = self.wd
+        plt.savefig(os.path.join(output_dir, "REFINED_mapping.png"))
         return None
 
-    def save_mapping_to_csv(self, output_path=None):
+
+    def save_mapping_to_csv(self):
+        output_path = pj(self.wd, "REFINED mapping.csv")
         hw = self.mapping_obj_array.shape[0]
         result = pd.DataFrame(np.zeros((hw, hw)))
         mapp = self.mapping_dict
@@ -300,59 +318,26 @@ class Refined(object):
             yy = int(mapp[txt]['y'])
             xx = int(mapp[txt]['x'])
             result.iloc[xx, yy] = txt
-        if output_path is None:
-            result.to_csv("REFINED mapping.csv")
-        else:
-            result.to_csv(output_path)
+
+        result.to_csv(output_path)
             
-        
-    
+
     def reverse_mapping(self, array):
         pass
 
-    def load_from_map_dict(self, fname):
-        pass
+    def save_mapping_to_json(self):
+        assert self._fitted
+        with open(pj(self.wd, "REFINED_mapping.json"), 'w') as f:
+            json.dump(self.mapping_dict, f)
 
-#%%
-def gen_mapping(args: RFDArgs):
-    odir = args.output_dir
-    check_path_exists(odir)
+    def load_from_json(self, path):
+        mapp = load_int_dict_from_json(path)
+        self.mapping_dict = mapp
+        self.feature_names_list = list(mapp.keys())
+        self._fitted = True
+        self.hw = math.ceil(np.sqrt(len(self.feature_names_list)))
+        return self
 
-    rfd = Refined(
-        dim_reduction=args.dim_reduction,
-        distance_metric=args.distance_metric,
-        assignment=args.assignment,
-        verbose=args.verbose
-        )
-
-    data = read_df_list(args.df_path)
-    key_param = float_to_int(args.key_param)
-    rfd.fit(data, key_param=key_param, output_dir=odir)
-
-    with open(os.path.join(odir, "REFINED_obj.pickle"), 'wb') as f:
-        pickle.dump(rfd, f)
-    with open(os.path.join(odir, "REFINED_mapping.json"), 'w') as f:
-        json.dump(rfd.mapping_dict, f)
-    return rfd
-
-from pydoc import locate
-def gen_images(args: GenImgArgs):
-    with open(args.path, 'rb') as f:
-        rfd = pickle.load(f)
-    data = read_df_list(args.df_path)
-    dtype = locate(args.dtype)
-    rfd.generate_image(
-        data,
-        output_folder=args.output_dir,
-        img_format=args.img_format,
-        dtype=dtype,
-        normalize_feature=args.normalize,
-        zscore=args.zscore,
-        zscore_cutoff=args.zscore_cutoff,
-        random_map=False, white_noise=False)
-
-def pipeline(args: PipelineArgs):
-    pass
 
 #%%
 #%%  InitCorr legacy code
