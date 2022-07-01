@@ -106,6 +106,8 @@ class Refined(object):
             print("LLE doesn't support precomputed dist so far. ")
             xy = lle.fit_transform(transposed_input)
         elif 'tsne' in self.dim_r:
+            if key_param is None:
+                key_param = 30
             tsne = mnf.TSNE(metric='precomputed', perplexity=key_param, random_state=self.seed)  # default by default
             xy = tsne.fit_transform(dist_mat)
         elif 'pca' in self.dim_r:
