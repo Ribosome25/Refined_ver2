@@ -14,6 +14,7 @@ class RFDArgs(Tap):
     dim_reduction: str='MDS'  # Dimensional reduction method. MDS, ISOMAP, C-ISOMAP, tSNE, LLE, DiffMap ...
     distance_metric: str='correlation'  # distance metric, or precomputed.
     assignment: str='refined'  # refined or LAP. LAP will be solved with Scipy. 
+    hw: int=None  # hw, default None
     verbose: bool
     key_param: float=5  # the key_param for dimreduction. N of nearest neighbors for most methods, or perplexity for tSNE. 
     n_var_filter: int=None  # max variance feature selection. how many feature with the most variance will be kept. 
@@ -39,6 +40,7 @@ class PipelineArgs(Tap):
     dim_reduction: str='MDS'  # Dimensional reduction method. MDS, ISOMAP, C-ISOMAP, tSNE, LLE, DiffMap ...
     distance_metric: str='correlation'  # distance metric, or precomputed.
     assignment: str='refined'  # refined or LAP. LAP will be solved with Scipy. 
+    hw: int=None  # hw, default None
     verbose: bool
     key_param: float=5  # the key_param for dimreduction. N of nearest neighbors for most methods, or perplexity for tSNE. 
     n_var_filter: int=None  # max variance feature selection. how many feature with the most variance will be kept. 

@@ -20,6 +20,7 @@ def gen_mapping_from_data(args: RFDArgs):
         dim_reduction=args.dim_reduction,
         distance_metric=args.distance_metric,
         assignment=args.assignment,
+        hw=args.hw,
         working_dir=args.output_dir,
         verbose=args.verbose,
         seed=args.seed

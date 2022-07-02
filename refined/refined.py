@@ -28,17 +28,19 @@ import re
 #%%
 class Refined(object):
     def __init__(self, dim_reduction='MDS', distance_metric='correlation',
-                 assignment='lap', working_dir='.', verbose=True, seed=None, **kwarg):
+                 assignment='lap', hw=None, working_dir='.', verbose=True, seed=None, **kwarg):
         """
-        dim_reduction: 'mds', 'c-iso', ... etc.
+        Params:
+        dim_reduction: alg to perform the dim-reduction, 'mds', 'c-iso', 'tsne', ... etc.
         distance_metric: correlation or euclidean;
         assignment: "refined" for the old one (nearest first), 'lap' for scipy linear assignment problem;
+        hw: the height and width (assume square for now). If hw=None, minimum hw (the most compact img) will be used. 
         seed: MDS, LLE, tSNE have random states.
 
         """
         self.dist_m = distance_metric.lower()
         self.dim_r = dim_reduction.lower()
-        self.hw = None
+        self.hw = hw
         self.assign = assignment.lower()
         self.wd = working_dir
         check_path_exists(working_dir)
@@ -71,7 +73,9 @@ class Refined(object):
         """
         assert isinstance(original_input, pd.DataFrame)
         feature_names_list = original_input.columns.tolist()
-        nn = math.ceil(np.sqrt(len(feature_names_list))) # image dimension
+        if self.hw is None:
+            self.hw = math.ceil(np.sqrt(len(feature_names_list))) # image dimension
+        nn = self.hw
         Nn = original_input.shape[1] # Feature amount total
 
         #%% calculate distances
@@ -132,7 +136,6 @@ class Refined(object):
         except ValueError:
             print("Refined fitting: Initial Corrs unavailable. ")
         #%%
-        self.hw = nn
         self.feature_names_list = feature_names_list
         self.dist_mat = dist_mat
         self.mapping_obj_array = mapping
@@ -194,7 +197,7 @@ class Refined(object):
 
 
     def generate_image(self, data_df, output_folder='RFD_Images', img_format='npy',
-                       dtype=int, normalize_feature=True, zscore=False, zscore_cutoff=5,
+                       dtype=int, normalize_feature=False, zscore=False, zscore_cutoff=5,
                        random_map=False, white_noise=False):
         assert self._fitted
         assert isinstance(data_df, pd.DataFrame)
@@ -335,7 +338,7 @@ class Refined(object):
         self.mapping_dict = mapp
         self.feature_names_list = list(mapp.keys())
         self._fitted = True
-        self.hw = math.ceil(np.sqrt(len(self.feature_names_list)))
+        # self.hw = math.ceil(np.sqrt(len(self.feature_names_list)))
         return self
 
 
