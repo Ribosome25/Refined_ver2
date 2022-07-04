@@ -96,7 +96,8 @@ def assign_features_to_pixels(xy, nn, verbose = False, output_dir='.'):
 
     if verbose:
         plt.figure(figsize=(8, 8))
-        plt.scatter(xy[:, 0], xy[:, 1])
+        # plt.scatter(xy[:, 0], xy[:, 1])
+        plt.scatter(xy[:, 1], - xy[:, 0])  # 同样 右转90度，匹配images
         for item in result_table:  # restult_table is a np array.
             xx, yy, ft = item
             if ft < -1:
@@ -104,7 +105,8 @@ def assign_features_to_pixels(xy, nn, verbose = False, output_dir='.'):
             # xx, yy need to transfer to [0, 1]
             start = xy[ft]  # 第3列是xy的第几个点
             end = (xx/nn, yy/nn)  # xx, yy 是grid 坐标
-            plt.arrow(start[0], start[1], end[0] - start[0], end[1] - start[1],
+            # plt.arrow(start[0], start[1], end[0] - start[0], end[1] - start[1],
+            plt.arrow(start[1], - start[0], end[1] - start[1], - end[0] + start[0],  # Rotate 90 之后
                     head_length=0.01, head_width=0.01)
         plt.title("REFINED assignment displacement")
         plt.savefig(os.path.join(output_dir, "assignment_displacement.png"))
@@ -148,9 +150,10 @@ def lap_scipy(xy, nn, verbose=False, output_dir='.'):
 
     if verbose:
         plt.figure(figsize=(8, 8))
-        plt.scatter(xy[:, 0], xy[:, 1])
+        plt.scatter(xy[:, 1], - xy[:, 0]) # 向右旋转90 d, match with images (and mapping csv, plot, etc.)。 x, y -> y, -x
         for start, end in zip(scipy_data2d, grid_scipy):
-            plt.arrow(start[0], start[1], end[0] - start[0], end[1] - start[1],
+            # plt.arrow(start[0], start[1], end[0] - start[0], end[1] - start[1],  # 原来的plot
+            plt.arrow(start[1], - start[0], end[1] - start[1], - end[0] + start[0],  # Rotate 90 之后
                     head_length=0.01, head_width=0.01)
         plt.title("LAP assignment displacement")
         plt.savefig(os.path.join(output_dir, "assignment_displacement.png"))
