@@ -26,6 +26,19 @@ if __name__ == "__main__":
     rfd.plot_mapping(output_dir=rfd_dir)  # genes mapping
     rfd.save_mapping_to_csv()
     rfd.save_mapping_to_json()
+    print("Image H&W", rfd.hw)
 
-    # TODO: load json
-
+    rfd2_dir = "./test/test_ADNI_not_compact_load_json/"
+    rfd2 = Refined(
+        dim_reduction='MDS', 
+        distance_metric='correlation',
+        assignment='lap', 
+        hw=None,
+        working_dir=rfd2_dir,
+        verbose=True, 
+        seed=0)
+    rfd2.load_from_json(rfd_dir + "REFINED_mapping.json")
+    rfd2.plot_mapping(output_dir=rfd2_dir)
+    rfd2.save_mapping_to_json()
+    rfd2.generate_image(sample, "images", "npy", normalize_feature=True)
+    rfd2.generate_image(sample, "png_imgs", "png", normalize_feature=True)

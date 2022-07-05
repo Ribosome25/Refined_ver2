@@ -3,27 +3,29 @@
 
 """
 import os
+from os.path import join as pj
+import math
 import numpy as np
 import pandas as pd
-import math
 import pickle
 import json
+import re
+
 import sklearn.manifold as mnf
 from sklearn.decomposition import PCA
-from imageio import imwrite as imsave
 from scipy.stats import pearsonr
 from scipy.spatial import distance
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.preprocessing import scale
+from imageio import imwrite as imsave
+import textwrap
+
 from myToolbox import ToolBox
 from myToolbox.Stat import normalize_df
+from myToolbox.Io import read_df, check_path_exists, load_int_dict_from_json
 from refined.ImageIsomap import ImageIsomap
 from refined.assignment import two_d_norm, two_d_eq
 from refined.assignment import assign_features_to_pixels, lap_scipy
-from myToolbox.Io import check_path_exists, load_int_dict_from_json
-import textwrap
-from os.path import join as pj
-import re
 
 #%%
 class Refined(object):
@@ -155,7 +157,6 @@ class Refined(object):
         except IOError:
             print("IO Error. File not saved for hill climbing.")
 
-
     def load_from_hill_climbing(self, f_name='to_hill_climbing.pickle'):
         try:
             with open(f_name, 'rb') as file:
@@ -174,12 +175,14 @@ class Refined(object):
         """
         Written for STRING protein interaction network format: feature_name, x (float), y(float)
         """
-        if string_f.endswith('.csv'):
-            tb = pd.read_csv(string_f, index_col=0)
-        else:
-            tb = pd.read_table(string_f, index_col=0)
+        tb = read_df(string_f)
         Nn = len(tb)
-        nn = math.ceil(math.sqrt(Nn))
+        if self.hw is None:
+            nn = math.ceil(math.sqrt(Nn))
+        else:
+            nn = self.hw
+        self.hw = nn
+
         self.feature_names_list = tb.index.tolist()
         xy = tb.iloc[:, :2].values
 
@@ -194,15 +197,25 @@ class Refined(object):
         self.mapping_dict = self._transform_mapping_dict(self.mapping_obj_array.copy(),
                                                          self.feature_names_list)
         self._fitted = True
-        self.hw = nn
         return self
 
 
     def generate_image(self, data_df, output_folder='RFD_Images', img_format='npy',
-                       dtype=int, normalize_feature=False, zscore=False, zscore_cutoff=5,
+                       normalize_feature=False, zscore=False, zscore_cutoff=5, fill_blank='zeros',
                        random_map=False, white_noise=False):
-        assert self._fitted
+        """
+        data_df: index is sample names, col is feature names.
+        output_folder: this is a subfolder's name under the RFD obj working dir.
+        img_format: npy will save values in float. if normalize_feature is on, the values will be normed to [0, 255]. 
+                Other formats will save values as int8.
+        fill_blank: mean or zeros. for the extra pixels, fill with mean or with zeros. 
+        random_map: if Ture, will generate the images will a mapping where features are randomly placed. 
+        white_noise: generate the images with the correct mapping, but gamma noise are filled.
+        """
+        # check prerequisits
+        assert self._fitted, "The REFINED object is not fitted."
         assert isinstance(data_df, pd.DataFrame)
+        # make data df
         gene_expression = data_df.copy()
         gene_expression.index = gene_expression.index.map(str) # In cases that index are ints.
         feature_name_list = self.feature_names_list.copy()
@@ -211,6 +224,7 @@ class Refined(object):
         gene_expression = gene_expression.reindex(feature_name_list, axis="columns")
         mapping_dict = self.mapping_dict.copy()
 
+        # Debug cases
         if random_map:
             import random
             random.seed(7)
@@ -223,50 +237,41 @@ class Refined(object):
             white_noise = np.random.gamma(4, 2, size=gene_expression.shape)
             gene_expression = pd.DataFrame(data=white_noise, index=gene_expression.index,
                                            columns=gene_expression.columns, dtype=int)
-
+        # Normalization
         if zscore:
-            # temp = minmax_scale(scale(gene_expression), feature_range=(0,255), axis=0)
             temp = scale(gene_expression)
             temp = np.clip(temp, -zscore_cutoff, zscore_cutoff)
-            # temp = minmax_scale(temp, feature_range=(0,255), axis=0)
             gene_expression = pd.DataFrame(temp,
                        index=gene_expression.index, columns=gene_expression.columns).fillna(0)
         elif normalize_feature:
-            gene_expression = normalize_df(gene_expression, (0, 255)).fillna(0)\
-        # Normalize [0, 255]
-        gene_expression = ToolBox.normalize_int_between(gene_expression, 0, 255)
+            gene_expression = normalize_df(gene_expression, (0, 255)).fillna(0)
 
-        # Make folder
+        # Normalize between [0, 255]
+        if 'np' not in img_format:
+            gene_expression = ToolBox.normalize_int_between(gene_expression, 0, 255)
+
+        # Save images        
         img_dir = pj(self.wd, output_folder)
-        # check_path_exists(output_folder)
         check_path_exists(img_dir)
 
-        # Save images
         n_img = len(gene_expression)
         debug_i = 1
         for idx, each_cell_line in gene_expression.iterrows():
             # each_cell_line is a Series.
             if self.verbose:
                 print("\rGenerating images: {} / {}".format(debug_i, str(n_img)), end='')
-            if ('np' in img_format) and (dtype == float):
-                Img = np.zeros((self.hw, self.hw))
+
+            if 'np' in img_format:
+                # Img = np.zeros((self.hw, self.hw))
                 # or start with 125?
                 Img = np.full((self.hw, self.hw), np.nan)
             else:
                 # imwrite requires unit8
-                Img = np.zeros((self.hw, self.hw)).astype(np.uint8)
+                # Img = np.zeros((self.hw, self.hw)).astype(np.uint8)
                 # or 125?
                 Img = np.full((self.hw, self.hw), np.nan).astype(np.uint8)
 
-            cell_line_name = each_cell_line.name
-
-            # An Exceptions:
-            if cell_line_name == 'PE/CAPJ15':
-                cell_line_name = 'PE'
-
-            cell_line_name = re.sub(r'[\\/*?:"<>|]', "", cell_line_name)  # invalid chars for file names
-
-            # save
+            # make img
             # for each_feature in each_cell_line.index:
             for each_feature in self.feature_names_list:
                 xx = mapping_dict[each_feature]['x']
@@ -274,18 +279,19 @@ class Refined(object):
                 val = each_cell_line[each_feature]
                 Img[xx, yy] = val # note: here is defined as this, x is the rows, y is the cols.
 
-            # OR use mean instead of 0?
-            np.nan_to_num(Img, copy=False, nan=np.nanmean(Img))
-
-            # Drug imgs does not accept underscore
-            cell_line_name = cell_line_name.replace('_','')
-            if 'VNLG124' == cell_line_name:
-                cell_line_name = 'VNLG_124'
-
-            if 'np' in img_format:# and dtype is float: （why have this dtype check?
-                np.save(pj(img_dir, 'RFD_'+ str(cell_line_name)), Img)
+            if "zero" in fill_blank:
+                np.nan_to_num(Img, copy=False, nan=0)
+            elif fill_blank == "mean":
+                np.nan_to_num(Img, copy=False, nan=np.nanmean(Img))
             else:
-                imsave(pj(img_dir,'RFD_'+cell_line_name+'.'+img_format), Img)
+                raise ValueError("Unknown blank pixel filling method.")
+
+            cell_line_name = each_cell_line.name
+            cell_line_name = re.sub(r'[\\/*?:"<>|]', "", cell_line_name)  # invalid chars for file names
+            if 'np' in img_format:# and dtype is float: （why have this dtype check?
+                np.save(pj(img_dir, str(cell_line_name)), Img)
+            else:
+                imsave(pj(img_dir, str(cell_line_name) + '.' + img_format), Img)
 
             debug_i += 1
         print("\n>>> Image generated.")
@@ -296,7 +302,8 @@ class Refined(object):
         import matplotlib.pyplot as plt
         assert self._fitted
         plt.figure(figsize=(16, 10))
-        hw = self.mapping_obj_array.shape[0]
+        # hw = self.mapping_obj_array.shape[0]
+        hw = self.hw
         mapp = self.mapping_dict
         for txt in self.feature_names_list:
             yy = mapp[txt]['y'] + 0.5
@@ -313,10 +320,9 @@ class Refined(object):
         plt.savefig(os.path.join(output_dir, "REFINED_mapping.png"))
         return None
 
-
     def save_mapping_to_csv(self):
         output_path = pj(self.wd, "REFINED mapping.csv")
-        hw = self.mapping_obj_array.shape[0]
+        hw = self.hw
         result = pd.DataFrame(np.zeros((hw, hw)))
         mapp = self.mapping_dict
         for txt in self.feature_names_list:
@@ -325,7 +331,6 @@ class Refined(object):
             result.iloc[xx, yy] = txt
 
         result.to_csv(output_path)
-            
 
     def reverse_mapping(self, array):
         pass
@@ -335,11 +340,26 @@ class Refined(object):
         with open(pj(self.wd, "REFINED_mapping.json"), 'w') as f:
             json.dump(self.mapping_dict, f)
 
+    @staticmethod
+    def _get_max_hw(mapp: dict):
+        max_x = 0
+        max_y = 0
+        for each_key in mapp:
+            if mapp[each_key]['x'] > max_x:
+                max_x = mapp[each_key]['x']
+            if mapp[each_key]['y'] > max_y:
+                max_y = mapp[each_key]['y']
+        return max(max_x, max_y)
+
     def load_from_json(self, path):
         mapp = load_int_dict_from_json(path)
         self.mapping_dict = mapp
-        self.feature_names_list = list(mapp.keys())
         self._fitted = True
+        max_hw = self._get_max_hw(mapp) + 1
+        if self.hw is None or self.hw < max_hw:
+            print("Warning: Image H&W resized to", max_hw)
+            self.hw = max_hw
+        self.feature_names_list = list(mapp.keys())
         # self.hw = math.ceil(np.sqrt(len(self.feature_names_list)))
         return self
 
