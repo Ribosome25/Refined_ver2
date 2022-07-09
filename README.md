@@ -74,10 +74,11 @@ python pipeline.py\
 --output_dir output\ADNI_PPL\
 --dim_reduction tSNE\
 --assignment LAP\
+--hw 50\
 --verbose\
 --key_param 30\
 --n_var_filter 1600\
---img_format npy 
+--img_format png 
 
 ```
 

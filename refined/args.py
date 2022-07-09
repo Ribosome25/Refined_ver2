@@ -25,11 +25,12 @@ class GenImgArgs(Tap):
     df_path: List  # the path(s) to the data to be genearated
     transpose: bool  # If true, DF will be transposed.
     img_format: str="npy"  # image format. npy means save as np arrays. 
-    dtype: str='int'  # the dtype of images. if float, the img_format must be npy
+    hw: int=None  # hw, default None
     normalize: bool=False  # normalize each feature to 0 - 255. In the case that some features are always high/or low, or features have diff units. Usually kept True.
     zscore: bool=False  # standardize each feature to N(0, 1).
     zscore_cutoff: float=5  # zscores beyond +- cutoff will be clipped. In the case there is an extreme value thus other values all become bright/dark.
     output_dir: str='RFD_Images'  # where to store the images.
+    fill_blank: str="zeros"  # fill blank pixels with zeros or mean?
 
 
 # class PipelineArgs(RFDArgs, GenImgArgs):
@@ -47,7 +48,7 @@ class PipelineArgs(Tap):
     seed: int=None  # Random seed for REFINED mapping generation -> dim reduction
 
     img_format: str="npy"  # image format. npy means save as np arrays. 
-    dtype: str='int'  # the dtype of images. if float, the img_format must be npy
     normalize: bool=False  # normalize each feature to 0 - 255. In the case that some features are always high/or low, or features have diff units. Usually kept True.
     zscore: bool=False  # standardize each feature to N(0, 1).
     zscore_cutoff: float=5  # zscores beyond +- cutoff will be clipped. In the case there is an extreme value thus other values all become bright/dark.
+    fill_blank: str="zeros"  # fill blank pixels with zeros or mean?

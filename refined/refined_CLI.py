@@ -50,21 +50,21 @@ def gen_images_from_json(args: GenImgArgs):
         with open(args.rfd_path, 'rb') as f:
             rfd = pickle.load(f)
     elif args.rfd_path.endswith('json'):
-        rfd = Refined(working_dir=parent_dir(args.rfd_path))
+        rfd = Refined(working_dir=parent_dir(args.rfd_path), hw=args.hw)
         rfd.load_from_json(args.rfd_path)
 
     data = read_df_list(args.df_path)
     if args.transpose:
         data = data.T
-    dtype = locate(args.dtype)
+    # dtype = locate(args.dtype)
     rfd.generate_image(
         data,
         output_folder=args.output_dir,
         img_format=args.img_format,
-        dtype=dtype,
         normalize_feature=args.normalize,
         zscore=args.zscore,
         zscore_cutoff=args.zscore_cutoff,
+        fill_blank=args.fill_blank,
         random_map=False, white_noise=False)
 
 def pipeline(args: PipelineArgs):
@@ -73,6 +73,7 @@ def pipeline(args: PipelineArgs):
         dim_reduction=args.dim_reduction,
         distance_metric=args.distance_metric,
         assignment=args.assignment,
+        hw=args.hw,
         working_dir=args.output_dir,
         verbose=args.verbose
         )
@@ -90,17 +91,17 @@ def pipeline(args: PipelineArgs):
     rfd.plot_mapping()
     rfd.save_mapping_to_csv()
 
-    dtype = locate(args.dtype)
+    # dtype = locate(args.dtype)
     rfd.generate_image(
         data,
         output_folder="RFD_Images",
         img_format=args.img_format,
-        dtype=dtype,
         normalize_feature=args.normalize,
         zscore=args.zscore,
         zscore_cutoff=args.zscore_cutoff,
+        fill_blank=args.fill_blank,
         random_map=False, white_noise=False)
 
     f_list = os.listdir(pj(args.output_dir, "RFD_Images"))
     f_list = [pj(args.output_dir, "RFD_Images", x) for x in f_list if x.endswith(args.img_format)]
-    enlarge_images(f_list, text_groups=data.index.tolist(), cm=cmapy.cmap('Blues_r'))
+    enlarge_images(f_list, output_dir=pj(args.output_dir, "images_preview/"), text_groups=data.index.tolist(), cm=cmapy.cmap('Blues_r'))
