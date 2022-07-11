@@ -44,7 +44,7 @@ def gen_mapping_from_data(args: RFDArgs):
     return rfd
 
 
-from pydoc import locate
+# from pydoc import locate
 def gen_images_from_json(args: GenImgArgs):
     if args.rfd_path.endswith(".pickle"):
         with open(args.rfd_path, 'rb') as f:
@@ -104,4 +104,6 @@ def pipeline(args: PipelineArgs):
 
     f_list = os.listdir(pj(args.output_dir, "RFD_Images"))
     f_list = [pj(args.output_dir, "RFD_Images", x) for x in f_list if x.endswith(args.img_format)]
-    enlarge_images(f_list, output_dir=pj(args.output_dir, "images_preview/"), text_groups=data.index.tolist(), cm=cmapy.cmap('Blues_r'))
+    preview_dir = pj(args.output_dir, "images_preview/")
+    check_path_exists(preview_dir)
+    enlarge_images(f_list, output_dir=preview_dir, text_groups=data.index.tolist(), cm=cmapy.cmap('Blues_r'))
