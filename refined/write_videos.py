@@ -129,6 +129,9 @@ def enlarge_images(file_list, output_dir=None, resz=10, text_groups=None, cm=cv2
     # new frame after each addition of water
     for each_f in file_list:
         each_img = _load_img_to_array(each_f)
+        # Normalize between 0-255
+        each_img = 255 * (each_img / each_img.max(axis=None))  
+
         imgs = each_img.reshape(hw, hw)
         imgs = cv2.resize(imgs, (hw*resz, hw*resz), interpolation=cv2.INTER_NEAREST).reshape(hw*resz, hw*resz, 1).astype(np.uint8)
         imgs = cv2.LUT(imgs, lookUpTable)
