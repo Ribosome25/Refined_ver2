@@ -30,7 +30,7 @@ def gen_mapping_from_data(args: RFDArgs):
     if args.transpose:
         data = data.T
     if args.n_var_filter is not None:
-        data = var_filter(data)
+        data = var_filter(data, args.n_var_filter)
 
     key_param = float_to_int(args.key_param)
     rfd.fit(data, key_param=key_param)
@@ -82,7 +82,7 @@ def pipeline(args: PipelineArgs):
     if args.transpose:
         data = data.T
     if args.n_var_filter is not None:
-        data = var_filter(data)
+        data = var_filter(data, args.n_var_filter)
 
     key_param = float_to_int(args.key_param)
     rfd.fit(data, key_param=key_param)
