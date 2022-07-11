@@ -36,7 +36,7 @@ class Refined(object):
         dim_reduction: alg to perform the dim-reduction, 'mds', 'c-iso', 'tsne', ... etc.
         distance_metric: correlation or euclidean;
         assignment: "refined" for the old one (nearest first), 'lap' for scipy linear assignment problem;
-        hw: the height and width (assume square for now). If hw=None, minimum hw (the most compact img) will be used. 
+        hw: the height and width (assume square for now). If hw=None, minimum hw (the most compact img) will be used.
         seed: MDS, LLE, tSNE have random states.
 
         """
@@ -206,10 +206,10 @@ class Refined(object):
         """
         data_df: index is sample names, col is feature names.
         output_folder: this is a subfolder's name under the RFD obj working dir.
-        img_format: npy will save values in float. if normalize_feature is on, the values will be normed to [0, 255]. 
+        img_format: npy will save values in float. if normalize_feature is on, the values will be normed to [0, 255].
                 Other formats will save values as int8.
-        fill_blank: mean or zeros. for the extra pixels, fill with mean or with zeros. 
-        random_map: if Ture, will generate the images will a mapping where features are randomly placed. 
+        fill_blank: mean or zeros. for the extra pixels, fill with mean or with zeros.
+        random_map: if Ture, will generate the images will a mapping where features are randomly placed.
         white_noise: generate the images with the correct mapping, but gamma noise are filled.
         """
         # check prerequisits
@@ -250,7 +250,7 @@ class Refined(object):
         if 'np' not in img_format:
             gene_expression = ToolBox.normalize_int_between(gene_expression, 0, 255)
 
-        # Save images        
+        # Save images
         img_dir = pj(self.wd, output_folder)
         check_path_exists(img_dir)
 
@@ -297,6 +297,40 @@ class Refined(object):
         print("\n>>> Image generated.")
         return None
 
+    def generate_array(self, item, fill_blank='zeros') -> np.ndarray:
+        """
+        This method is for coverting only one instance. Right now only get_item is using it.
+        If multiple instances is needed, do it later.
+        item is a df or a series, with feature names given.
+        """
+        # check prerequisits
+        assert self._fitted, "The REFINED object is not fitted."
+        if isinstance(item, pd.DataFrame):
+            assert len(item) == 1, "This method is for coverting only one instance."
+            item = item.iloc[0]
+        item = item.copy()
+        item.index = item.index.map(str)
+        feature_name_list = self.feature_names_list.copy()
+        _not_found_list = [x for x in feature_name_list if x not in item.index]
+        if len(_not_found_list) > 0:
+            print("Features not found in item: ", _not_found_list)
+        mapping_dict = self.mapping_dict.copy()
+
+        Img = np.full((self.hw, self.hw), np.nan)
+        for each_feature in self.feature_names_list:
+            xx = mapping_dict[each_feature]['x']
+            yy = mapping_dict[each_feature]['y']
+            val = item.loc[each_feature]
+            Img[xx, yy] = val # note: here is defined as this, x is the rows, y is the cols.
+
+        if "zero" in fill_blank:
+            np.nan_to_num(Img, copy=False, nan=0)
+        elif fill_blank == "mean":
+            np.nan_to_num(Img, copy=False, nan=np.nanmean(Img))
+        else:
+            raise ValueError("Unknown blank pixel filling method.")
+
+        return Img
 
     def plot_mapping(self, output_dir=None):
         import matplotlib.pyplot as plt

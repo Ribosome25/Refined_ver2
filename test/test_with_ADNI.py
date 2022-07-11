@@ -38,6 +38,9 @@ if __name__ == "__main__":
         verbose=True, 
         seed=0)
     rfd2.load_from_json(rfd_dir + "REFINED_mapping.json")
+    x0 = rfd2.generate_array(sample.iloc[0])
+    x1 = rfd2.generate_array(sample.iloc[1])
+
     rfd2.plot_mapping(output_dir=rfd2_dir)
     rfd2.save_mapping_to_json()
     rfd2.generate_image(sample, "images", "npy", normalize_feature=True)
