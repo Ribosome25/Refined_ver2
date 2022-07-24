@@ -110,3 +110,19 @@ If in the data file, cols are sample index and rows are features, dont forget to
 Note:
 
 the best dim-reduction for LAP is probably TSNE. 
+
+
+
+
+
+## Recent used CLIs
+
+```bash
+python pipeline.py --df_path G:/integrated_model_own/data/ADNIClassData.parquet --transpose --output_dir output/ADNI_tsne_spr50 --dim_reduction tSNE --assignment LAP --hw 50 --verbose --key_param 30 --n_var_filter 1600 --img_format png 
+
+python pipeline.py --df_path G:/integrated_model_own/data/ADNIClassData.parquet --transpose --output_dir output/ADNI_mds_spr2k-64 --dim_reduction mds --assignment LAP --hw 64 --verbose --key_param 30 --n_var_filter 2000 --img_format npy
+
+python refined_from_data.py --df_path G:/integrated_model_own/data/ADNIClassData.parquet --transpose --output_dir output/ADNI_mds_spr4k-64_s0 --dim_reduction mds --assignment LAP --verbose --key_param 30 --n_var_filter 4000 --seed 0
+
+```
+
