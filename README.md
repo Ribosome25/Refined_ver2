@@ -1,13 +1,19 @@
 # REFINED generator
-Generate REFINED 2D image representations for numerical data
+Generate REFINED 2D image representations for numerical tabular data.
+
+Better organized for internal usage. 
 
 ## Dependencies
 
 TAP `pip install typed-argument-parser`
 
-myToolbox, see https://github.com/Ribosome25/myToolbox . You may clone this repo to your py library dir or the current working dir. 
+myToolbox, see https://github.com/Ribosome25/myToolbox . (You may clone this repo to your py library dir or the current working dir.)
 
 ## Use as a library
+
+REFINED save all intermediate results and final images in a designated working dir. 
+
+To generate a REFINED mapping, save the mapping, and generate images:
 
 ```python
 from refined.refined import Refined
@@ -32,8 +38,6 @@ rfd.save_mapping_to_json()
 rfd2 = Refined(working_dir='copied')
 rfd2.load_from_json("REFINED_mapping.json")
 ```
-
-
 
 ## Use as CLI
 
@@ -115,7 +119,7 @@ the best dim-reduction for LAP is probably TSNE.
 
 
 
-## Recent used CLIs
+## Recently used CLIs
 
 ```bash
 python pipeline.py --df_path G:/integrated_model_own/data/ADNIClassData.parquet --transpose --output_dir output/ADNI_tsne_spr50 --dim_reduction tSNE --assignment LAP --hw 50 --verbose --key_param 30 --n_var_filter 1600 --img_format png 
@@ -124,5 +128,8 @@ python pipeline.py --df_path G:/integrated_model_own/data/ADNIClassData.parquet 
 
 python refined_from_data.py --df_path G:/integrated_model_own/data/ADNIClassData.parquet --transpose --output_dir output/ADNI_mds_spr4k-64_s0 --dim_reduction mds --assignment LAP --verbose --key_param 30 --n_var_filter 4000 --seed 0
 
+python pipeline.py --df_path G:/integrated_model_own/data/CCLE/tmm_normalized_logcpm_final.parquet --transpose --output_dir output/CCLE_tsne_8k100_rna --dim_reduction tSNE --assignment LAP --hw 100 --verbose --key_param 30 --n_var_filter 8000 --img_format npy
+
+python gen_img_from_rfd.py --rfd_path output/CCLE_tsne_8k100_rna/REFINED_mapping.json --df_path G:/integrated_model_own/data/CCLE/Protein_Quant_final.parquet --transpose --img_format npy --hw 100 --output_dir "./Prot"
 ```
 
