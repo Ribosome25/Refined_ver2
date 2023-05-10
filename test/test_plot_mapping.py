@@ -7,6 +7,9 @@ Created on %(date)s
 Run from root. 
 Move it out before running. 
 
+lagacy. Not working on 7/2/22
+
+
 """
 import pandas as pd
 import pickle

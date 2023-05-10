@@ -95,6 +95,16 @@ def write_video(video_filename, file_list, sequence,
     out.release()
 
 
+def _load_img_to_array(path):
+    "load np .npy or PIL load images."
+    try:
+        array = np.load(path)
+    except ValueError:
+        with Image.open(path) as img:
+            array = np.asarray(img)
+    return array
+
+
 def enlarge_images(file_list, output_dir=None, resz=10, text_groups=None, cm=cv2.COLORMAP_COOL, gamma=1):
     """
     Text list: pass a list to annotate images.
@@ -105,7 +115,7 @@ def enlarge_images(file_list, output_dir=None, resz=10, text_groups=None, cm=cv2
     cm: cv2 colormap.
     resz: 放大几倍
     """
-    sample_img = np.load(file_list[0])
+    sample_img = _load_img_to_array(file_list[0])
     hw = sample_img.shape[0]
     if text_groups is not None:
         rev_txt = text_groups[::-1]
@@ -118,7 +128,10 @@ def enlarge_images(file_list, output_dir=None, resz=10, text_groups=None, cm=cv2
     #     lookUpTable[0, i] = np.clip((255 * ((i-127)/127)**3 + 127), 0, 255)
     # new frame after each addition of water
     for each_f in file_list:
-        each_img = np.load(each_f)
+        each_img = _load_img_to_array(each_f)
+        # Normalize between 0-255
+        each_img = 255 * (each_img / each_img.max(axis=None))  
+
         imgs = each_img.reshape(hw, hw)
         imgs = cv2.resize(imgs, (hw*resz, hw*resz), interpolation=cv2.INTER_NEAREST).reshape(hw*resz, hw*resz, 1).astype(np.uint8)
         imgs = cv2.LUT(imgs, lookUpTable)
@@ -131,7 +144,7 @@ def enlarge_images(file_list, output_dir=None, resz=10, text_groups=None, cm=cv2
         if output_dir is None:
             out_fname = each_f + '.png'
         else:
-            os.path.join(output_dir, os.path.split(each_f)[-1]+".png")
+            out_fname = os.path.join(output_dir, os.path.split(each_f)[-1]+".png")
         cv2.imwrite(out_fname, im_color)
 
 
