@@ -47,10 +47,13 @@ def gene_filter_unsupervised(df, n=2500):
 # lookup_table["c"] = lookup_table[0] + "-" + lookup_table[1]
 
 #%% 
-data = pd.read_table("G:/Datasets/CCRCC/Supplementary_Data_Proteome_DIA.csv", index_col=0, header=0).iloc[:, 3:].T
+data = pd.read_table("G:/Datasets/CCRCC/Supplementary_Data_Proteome_DIA.csv", index_col=0, header=0, sep=',')
+data = data.iloc[:, 3:].T
 data = data.loc[:, ~data.columns.duplicated()]
 assert(data.columns.duplicated().sum() == 0)
 data.fillna(data.mean(), inplace=True)
+data.dropna(axis=1, how='all', inplace=True)
+data.isna().sum().sum()
 # new_idx = lookup_table.reindex(data.index)['c']
 # data.index = new_idx
 sample = gene_filter_unsupervised(data, 2500)
